@@ -83,3 +83,6 @@ train$FamilyType[train$FamilySize >= 3 & train$FamilySize < 6 ] <- "Medium"
 train$FamilyType[train$FamilySize >= 6 ] <- "Large"
 prop.table(table(train$FamilyType,train$Survived),1)
 #smal and medium families have higher chances, large families have the smallest. 
+
+
+# Lets add missing data
