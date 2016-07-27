@@ -83,3 +83,17 @@ train$FamilyType[train$FamilySize >= 3 & train$FamilySize < 6 ] <- "Medium"
 train$FamilyType[train$FamilySize >= 6 ] <- "Large"
 prop.table(table(train$FamilyType,train$Survived),1)
 #smal and medium families have higher chances, large families have the smallest. 
+
+
+# Lets add missing data
+train$Age[is.na(train$Age)]<-median(train$Age,na.rm=TRUE)
+
+
+# Start ML
+train2<-train[,c("Survived","Pclass","Sex", "Age", "FamilyType", "Embarked","SibSp","Parch", "Fare")]
+train2$Survived<-as.factor(train$Survived)
+train2$Pclass<-as.factor(train$Pclass)
+train2$Sex<-as.factor(train$Sex)
+train2$FamilyType<-as.factor(train$FamilyType)
+train2$Embarked<-as.factor(train2$Embarked)
+fit<-randomForest(Survived~.,data=train2)
