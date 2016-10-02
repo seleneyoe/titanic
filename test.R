@@ -1,9 +1,4 @@
-# This script trains a Random Forest model based on the data,
-# saves a sample submission
 
-# Download 1_random_forest_r_submission.csv from the output below
-# and submit it through https://www.kaggle.com/c/titanic-gettingStarted/submissions/attach
-# to enter this getting started competition!
 try(setwd("~/../../Downloads"),silent=TRUE)
 try(setwd("~/../Downloads"),silent=TRUE)
 library(ggplot2)
@@ -22,7 +17,7 @@ holdOutTest  <- read.csv("test.csv",  stringsAsFactors=FALSE)
 holdOutTestID<-holdOutTest[,1]
 
 # Function to clean the data
-extractFeatures <- function(data) {
+extractFeatures <- function(data,inclSurvived=FALSE) {
   features <- c("Pclass",
                 "Age",
                 "Sex",
@@ -30,17 +25,22 @@ extractFeatures <- function(data) {
                 "SibSp",
                 "Fare",
                 "Embarked")
-  fea <- data[,features]
-  fea$Age[is.na(fea$Age)] <- 0
-  fea$Fare[is.na(fea$Fare)] <- median(fea$Fare, na.rm=TRUE)
-  fea$Embarked[fea$Embarked==""] = "S"
+  if (inclSurvived==TRUE) {
+    fea <- data[,c("Survived",features)]
+  } else {
+    fea <- data[,features]  
+  }
+  # fea$Age[is.na(fea$Age)] <- 0
+  # fea$Fare[is.na(fea$Fare)] <- median(fea$Fare, na.rm=TRUE)
+  fea$Embarked[fea$Embarked==""] <- NA
   fea$Sex      <- as.factor(fea$Sex)
   fea$Embarked <- as.factor(fea$Embarked)
+  fea<-fea[complete.cases(fea),]
   return(fea)
 }
 
 # Clean data
-train<-data.frame(Survived=train[,"Survived"],extractFeatures(train))
+train<-extractFeatures(train,inclSurvived=TRUE)
 holdOutTest<-extractFeatures(holdOutTest)
 
 # Partition training data
@@ -49,13 +49,25 @@ inTraining<-createDataPartition(train$Survived,p=0.75,list=FALSE)
 training<-train[inTraining,]
 testing<-train[-inTraining,]
 
+# Train Naives Bayes model
+set.seed(1000)
+nbFit<-train(factor(Survived)~.,
+             data=training,
+             method="nb",
+             trControl=trainControl(method="repeatedcv",
+                                    number=10,
+                                    repeats=10))
+nbPred<-predict(nbFit,newdata=testing)
+confusionMatrix(testing[,c("Survived")],nbPred)
+
 # Train decision tree model
 set.seed(1000)
 rpartFit<-train(factor(Survived)~.,
                 data=training,
                 method="rpart",
-                trControl=trainControl(method="cv",
-                                       number=10))
+                trControl=trainControl(method="repeatedcv",
+                                       number=10,
+                                       repeats=10))
 rpartPred<-predict(rpartFit,newdata=testing)
 confusionMatrix(testing[,c("Survived")],rpartPred)
 
@@ -67,13 +79,26 @@ lines(x=c(0, 1), y=c(0, 1), col="red", lwd=2)
 auc = performance(pred, 'auc')
 slot(auc, 'y.values')
 
+# Train a boosted tree model
+set.seed(1000)
+gbmFit<-train(factor(Survived)~.,
+              data=training,
+              method="gbm",
+              trControl=trainControl(method="repeatedcv",
+                                     number=10,
+                                     repeats=10),
+              verbose = FALSE)
+gbmPred<-predict(gbmFit,newdata=testing)
+confusionMatrix(testing[,c("Survived")],gbmPred)
+
 # Train random forest model
 set.seed(1000)
 rfFit<-train(factor(Survived)~.,
              data=training,
              method="rf",
-             trControl=trainControl(method="cv",
-                                    number=10))
+             trControl=trainControl(method="repeatedcv",
+                                    number=10,
+                                    repeats=10))
 rfPred<-predict(rfFit,newdata=testing)
 confusionMatrix(testing[,c("Survived")],rfPred)
 
